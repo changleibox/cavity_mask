@@ -38,14 +38,15 @@ class CavityMask extends SingleChildRenderObjectWidget {
   }
 }
 
-class _RenderCavityMask extends RenderProxyBox {
+class _RenderCavityMask extends RenderProxyBoxWithHitTestBehavior {
   _RenderCavityMask({
     required Color color,
     required DecorationPosition position,
   })  : _position = position,
         _paint = Paint()
           ..color = color
-          ..style = PaintingStyle.fill;
+          ..style = PaintingStyle.fill,
+        super(behavior: HitTestBehavior.opaque);
 
   final Paint _paint;
 
@@ -71,10 +72,11 @@ class _RenderCavityMask extends RenderProxyBox {
     markNeedsPaint();
   }
 
-  void _paintColor(Canvas canvas, Rect rect) {
+  void _paintColor(PaintingContext context, Offset offset) {
+    final canvas = context.canvas;
     canvas.save();
     final path1 = Path();
-    path1.addRect(rect);
+    path1.addRect(offset & size);
 
     final path2 = Path();
     path2.fillType = PathFillType.nonZero;
@@ -100,14 +102,14 @@ class _RenderCavityMask extends RenderProxyBox {
 
   @override
   void paint(PaintingContext context, Offset offset) {
-    if (size != Size.zero && position == DecorationPosition.background) {
-      _paintColor(context.canvas, offset & size);
+    if (size > Size.zero && position == DecorationPosition.background) {
+      _paintColor(context, offset);
     }
     if (child != null) {
-      super.paint(context, offset);
+      context.paintChild(child!, offset);
     }
-    if (size != Size.zero && position == DecorationPosition.foreground) {
-      _paintColor(context.canvas, offset & size);
+    if (size > Size.zero && position == DecorationPosition.foreground) {
+      _paintColor(context, offset);
     }
   }
 }
