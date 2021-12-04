@@ -34,7 +34,7 @@ abstract class _RenderCavity<T> extends RenderProxyBox {
     }
   }
 
-  RenderObject? _parent;
+  _RenderCavityMask? _parent;
 
   @override
   void attach(PipelineOwner owner) {
@@ -54,14 +54,18 @@ abstract class _RenderCavity<T> extends RenderProxyBox {
   @override
   void detach() {
     _clipper?.removeListener(_markNeedsClip);
-    _clipPath = null;
     _parent = null;
+    _clipPath = null;
+    _lastClip = null;
+    _lastOffset = null;
     super.detach();
   }
 
   void _markNeedsClip() {
     _clip = null;
     _clipPath = null;
+    _lastClip = null;
+    _lastOffset = null;
     markNeedsPaint();
     markNeedsSemanticsUpdate();
   }
@@ -93,6 +97,8 @@ abstract class _RenderCavity<T> extends RenderProxyBox {
     if (oldSize != size) {
       _clip = null;
       _clipPath = null;
+      _lastClip = null;
+      _lastOffset = null;
     }
   }
 
@@ -100,20 +106,19 @@ abstract class _RenderCavity<T> extends RenderProxyBox {
     _clip ??= _clipper?.getClip(size) ?? _defaultClip;
   }
 
-  Offset? _lastOffset;
   T? _lastClip;
+  Offset? _lastOffset;
 
   void _updateClipPath(Offset offset, [bool needsPaint = true]) {
     final clip = _clip;
     if (_lastOffset == offset && _lastClip == clip) {
       return;
     }
-    _clipPath = _createPath(offset, clip!);
-    _lastOffset = offset;
     _lastClip = clip;
-    final parent = _parent;
-    if (needsPaint && parent != null && !parent.debugNeedsPaint) {
-      Timer.run(parent.markNeedsPaint);
+    _lastOffset = offset;
+    _clipPath = _createPath(offset, clip!);
+    if (needsPaint) {
+      _parent?._markNeedsPaint();
     }
   }
 

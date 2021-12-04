@@ -83,6 +83,13 @@ class _RenderCavityMask extends RenderProxyBoxWithHitTestBehavior {
     canvas.restore();
   }
 
+  void _markNeedsPaint() {
+    if (debugNeedsPaint) {
+      return;
+    }
+    Timer.run(markNeedsPaint);
+  }
+
   @override
   void paint(PaintingContext context, Offset offset) {
     if (child != null) {
