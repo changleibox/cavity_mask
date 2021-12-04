@@ -83,9 +83,12 @@ abstract class _RenderCavity<T> extends RenderProxyBox {
     }
   }
 
-  void _updateClip([Offset? offset]) {
+  void _updateClip() {
     _clip ??= _clipper?.getClip(size) ?? _defaultClip;
-    _clipPath ??= _createPath(offset ?? localToGlobal(Offset.zero), _clip!);
+  }
+
+  void _updateClipPath(Offset offset) {
+    _clipPath = _createPath(offset, _clip!);
   }
 
   @override
@@ -166,7 +169,8 @@ class RenderCavityRect extends _RenderCavity<Rect> {
   @override
   void paint(PaintingContext context, Offset offset) {
     if (child != null) {
-      _updateClip(offset);
+      _updateClip();
+      _updateClipPath(offset);
       layer = context.pushClipRect(
         needsCompositing,
         offset,
@@ -257,7 +261,8 @@ class RenderCavityRRect extends _RenderCavity<RRect> {
   @override
   void paint(PaintingContext context, Offset offset) {
     if (child != null) {
-      _updateClip(offset);
+      _updateClip();
+      _updateClipPath(offset);
       layer = context.pushClipRRect(
         needsCompositing,
         offset,
@@ -343,7 +348,8 @@ class RenderCavityOval extends _RenderCavity<Rect> {
   @override
   void paint(PaintingContext context, Offset offset) {
     if (child != null) {
-      _updateClip(offset);
+      _updateClip();
+      _updateClipPath(offset);
       layer = context.pushClipPath(
         needsCompositing,
         offset,
@@ -422,7 +428,8 @@ class RenderCavityPath extends _RenderCavity<Path> {
   @override
   void paint(PaintingContext context, Offset offset) {
     if (child != null) {
-      _updateClip(offset);
+      _updateClip();
+      _updateClipPath(offset);
       layer = context.pushClipPath(
         needsCompositing,
         offset,
