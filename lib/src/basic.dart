@@ -15,35 +15,27 @@ class CavityMask extends SingleChildRenderObjectWidget {
   const CavityMask({
     Key? key,
     required this.color,
-    this.position = DecorationPosition.foreground,
     Widget? child,
   }) : super(key: key, child: child);
 
   /// 颜色
   final Color color;
 
-  /// Whether to paint the box decoration behind or in front of the child.
-  final DecorationPosition position;
-
   @override
   _RenderCavityMask createRenderObject(BuildContext context) {
-    return _RenderCavityMask(color: color, position: position);
+    return _RenderCavityMask(color: color);
   }
 
   @override
   void updateRenderObject(BuildContext context, covariant _RenderCavityMask renderObject) {
-    renderObject
-      ..color = color
-      ..position = position;
+    renderObject.color = color;
   }
 }
 
 class _RenderCavityMask extends RenderProxyBoxWithHitTestBehavior {
   _RenderCavityMask({
     required Color color,
-    required DecorationPosition position,
-  })  : _position = position,
-        _paint = Paint()
+  })  : _paint = Paint()
           ..color = color
           ..style = PaintingStyle.fill,
         super(behavior: HitTestBehavior.opaque);
@@ -60,18 +52,6 @@ class _RenderCavityMask extends RenderProxyBoxWithHitTestBehavior {
     markNeedsPaint();
   }
 
-  DecorationPosition _position;
-
-  DecorationPosition get position => _position;
-
-  set position(DecorationPosition value) {
-    if (value == position) {
-      return;
-    }
-    _position = value;
-    markNeedsPaint();
-  }
-
   void _paintColor(PaintingContext context, Offset offset) {
     final canvas = context.canvas;
     canvas.save();
@@ -83,8 +63,9 @@ class _RenderCavityMask extends RenderProxyBoxWithHitTestBehavior {
 
     void visitChildren(RenderObject child) {
       if (child is _RenderCavity) {
-        if (child._clip != null) {
-          path2.addPath(child.clipPath, child.localToGlobal(Offset.zero));
+        final clipPath = child.clipPath;
+        if (clipPath != null) {
+          path2.addPath(clipPath, Offset.zero);
         }
       } else if (child is! _RenderCavityMask) {
         child.visitChildren(visitChildren);
@@ -102,13 +83,10 @@ class _RenderCavityMask extends RenderProxyBoxWithHitTestBehavior {
 
   @override
   void paint(PaintingContext context, Offset offset) {
-    if (size > Size.zero && position == DecorationPosition.background) {
-      _paintColor(context, offset);
-    }
     if (child != null) {
       context.paintChild(child!, offset);
     }
-    if (size > Size.zero && position == DecorationPosition.foreground) {
+    if (size > Size.zero) {
       _paintColor(context, offset);
     }
   }

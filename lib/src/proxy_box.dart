@@ -48,13 +48,12 @@ abstract class _RenderCavity<T> extends RenderProxyBox {
 
   void _markNeedsClip() {
     _clip = null;
+    _clipPath = null;
     markNeedsPaint();
     markNeedsSemanticsUpdate();
   }
 
   T get _defaultClip;
-
-  Path get clipPath;
 
   T? _clip;
 
@@ -69,17 +68,24 @@ abstract class _RenderCavity<T> extends RenderProxyBox {
 
   Clip _clipBehavior;
 
+  Path? get clipPath => _clipPath;
+  Path? _clipPath;
+
+  Path _createPath(Offset offset, T clip);
+
   @override
   void performLayout() {
     final oldSize = hasSize ? size : null;
     super.performLayout();
     if (oldSize != size) {
       _clip = null;
+      _clipPath = null;
     }
   }
 
-  void _updateClip() {
+  void _updateClip([Offset? offset]) {
     _clip ??= _clipper?.getClip(size) ?? _defaultClip;
+    _clipPath ??= _createPath(offset ?? localToGlobal(Offset.zero), _clip!);
   }
 
   @override
@@ -141,7 +147,9 @@ class RenderCavityRect extends _RenderCavity<Rect> {
   Rect get _defaultClip => Offset.zero & size;
 
   @override
-  Path get clipPath => Path()..addRect(_clip!);
+  ui.Path _createPath(ui.Offset offset, ui.Rect clip) {
+    return Path()..addRect(clip.shift(offset));
+  }
 
   @override
   bool hitTest(BoxHitTestResult result, {required Offset position}) {
@@ -158,7 +166,7 @@ class RenderCavityRect extends _RenderCavity<Rect> {
   @override
   void paint(PaintingContext context, Offset offset) {
     if (child != null) {
-      _updateClip();
+      _updateClip(offset);
       layer = context.pushClipRect(
         needsCompositing,
         offset,
@@ -230,7 +238,9 @@ class RenderCavityRRect extends _RenderCavity<RRect> {
   RRect get _defaultClip => _borderRadius.toRRect(Offset.zero & size);
 
   @override
-  Path get clipPath => Path()..addRRect(_clip ?? RRect.zero);
+  ui.Path _createPath(ui.Offset offset, ui.RRect clip) {
+    return Path()..addRRect(clip.shift(offset));
+  }
 
   @override
   bool hitTest(BoxHitTestResult result, {required Offset position}) {
@@ -247,7 +257,7 @@ class RenderCavityRRect extends _RenderCavity<RRect> {
   @override
   void paint(PaintingContext context, Offset offset) {
     if (child != null) {
-      _updateClip();
+      _updateClip(offset);
       layer = context.pushClipRRect(
         needsCompositing,
         offset,
@@ -309,7 +319,9 @@ class RenderCavityOval extends _RenderCavity<Rect> {
   Rect get _defaultClip => Offset.zero & size;
 
   @override
-  Path get clipPath => _getClipPath(_clip!);
+  ui.Path _createPath(ui.Offset offset, ui.Rect clip) {
+    return _getClipPath(clip)..shift(offset);
+  }
 
   @override
   bool hitTest(BoxHitTestResult result, {required Offset position}) {
@@ -331,7 +343,7 @@ class RenderCavityOval extends _RenderCavity<Rect> {
   @override
   void paint(PaintingContext context, Offset offset) {
     if (child != null) {
-      _updateClip();
+      _updateClip(offset);
       layer = context.pushClipPath(
         needsCompositing,
         offset,
@@ -391,7 +403,9 @@ class RenderCavityPath extends _RenderCavity<Path> {
   Path get _defaultClip => Path()..addRect(Offset.zero & size);
 
   @override
-  Path get clipPath => _clip!;
+  ui.Path _createPath(ui.Offset offset, ui.Path clip) {
+    return clip..shift(offset);
+  }
 
   @override
   bool hitTest(BoxHitTestResult result, {required Offset position}) {
@@ -408,7 +422,7 @@ class RenderCavityPath extends _RenderCavity<Path> {
   @override
   void paint(PaintingContext context, Offset offset) {
     if (child != null) {
-      _updateClip();
+      _updateClip(offset);
       layer = context.pushClipPath(
         needsCompositing,
         offset,
