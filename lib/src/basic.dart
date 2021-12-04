@@ -8,6 +8,15 @@ import 'package:flutter/widgets.dart';
 
 part 'proxy_box.dart';
 
+/// Where to paint a cavity mask.
+enum MaskPosition {
+  /// Paint the cavity mask behind the children.
+  background,
+
+  /// Paint the cavity mask in front of the children.
+  foreground,
+}
+
 /// Created by box on 2021/12/4.
 ///
 /// 遮罩
@@ -17,6 +26,7 @@ class CavityMask extends SingleChildRenderObjectWidget {
     Key? key,
     required this.color,
     this.barrier = false,
+    this.position = MaskPosition.foreground,
     Widget? child,
   }) : super(key: key, child: child);
 
@@ -26,16 +36,24 @@ class CavityMask extends SingleChildRenderObjectWidget {
   /// barrier
   final bool barrier;
 
+  /// position
+  final MaskPosition position;
+
   @override
   _RenderCavityMask createRenderObject(BuildContext context) {
-    return _RenderCavityMask(color: color, barrier: barrier);
+    return _RenderCavityMask(
+      color: color,
+      barrier: barrier,
+      position: position,
+    );
   }
 
   @override
   void updateRenderObject(BuildContext context, covariant _RenderCavityMask renderObject) {
     renderObject
       ..color = color
-      ..barrier = barrier;
+      ..barrier = barrier
+      ..position = position;
   }
 }
 
@@ -43,10 +61,12 @@ class _RenderCavityMask extends RenderProxyBox {
   _RenderCavityMask({
     required Color color,
     required bool barrier,
+    required MaskPosition position,
   })  : _paint = Paint()
           ..color = color
           ..style = PaintingStyle.fill,
-        _barrier = barrier;
+        _barrier = barrier,
+        _position = position;
 
   final Paint _paint;
 
@@ -71,12 +91,27 @@ class _RenderCavityMask extends RenderProxyBox {
 
   bool _barrier;
 
+  MaskPosition get position => _position;
+
+  set position(MaskPosition value) {
+    if (value == _position) {
+      return;
+    }
+    _position = value;
+    markNeedsPaint();
+  }
+
+  MaskPosition _position;
+
+  bool get _opaque => color.alpha != 0x00;
+
   final _children = <_RenderCavity>[];
 
   @override
   bool hitTest(BoxHitTestResult result, {required ui.Offset position}) {
     if (size.contains(position)) {
-      if (barrier && hitTestSelf(position) || hitTestChildren(result, position: position) && hitTestSelf(position)) {
+      if (this.position == MaskPosition.foreground && barrier && hitTestSelf(position) ||
+          hitTestChildren(result, position: position) && hitTestSelf(position)) {
         result.add(BoxHitTestEntry(this, position));
         return true;
       }
@@ -86,7 +121,7 @@ class _RenderCavityMask extends RenderProxyBox {
 
   @override
   bool hitTestSelf(ui.Offset position) {
-    return _children.every((element) => element.clipPath?.contains(position) != true) && color.alpha != 0x00;
+    return _children.every((element) => element.clipPath?.contains(position) != true) && _opaque;
   }
 
   @override
@@ -105,16 +140,12 @@ class _RenderCavityMask extends RenderProxyBox {
       }
     }
 
-    if (color.alpha == 0x00) {
-      return;
+    if (_opaque) {
+      this.visitChildren(visitChildren);
     }
-    this.visitChildren(visitChildren);
   }
 
   void _paintColor(PaintingContext context, Offset offset) {
-    if (color.alpha == 0x00) {
-      return;
-    }
     final rect = offset & size;
     final canvas = context.canvas;
     canvas.save();
@@ -139,20 +170,20 @@ class _RenderCavityMask extends RenderProxyBox {
   }
 
   void _markNeedsLayout() {
-    if (color.alpha == 0x00) {
-      return;
-    }
-    if (!debugNeedsLayout) {
+    if (_opaque && !debugNeedsLayout) {
       Timer.run(markNeedsLayout);
     }
   }
 
   @override
   void paint(PaintingContext context, Offset offset) {
+    if (_opaque && size > Size.zero && position == MaskPosition.background) {
+      _paintColor(context, offset);
+    }
     if (child != null) {
       context.paintChild(child!, offset);
     }
-    if (size > Size.zero) {
+    if (_opaque && size > Size.zero && position == MaskPosition.foreground) {
       _paintColor(context, offset);
     }
   }
