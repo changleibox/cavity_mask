@@ -325,7 +325,7 @@ class RenderCavityOval extends _RenderCavity<Rect> {
 
   @override
   ui.Path _createPath(ui.Offset offset, ui.Rect clip) {
-    return _getClipPath(clip)..shift(offset);
+    return _getClipPath(clip).shift(offset);
   }
 
   @override
@@ -410,7 +410,7 @@ class RenderCavityPath extends _RenderCavity<Path> {
 
   @override
   ui.Path _createPath(ui.Offset offset, ui.Path clip) {
-    return clip..shift(offset);
+    return clip.shift(offset);
   }
 
   @override
