@@ -82,9 +82,9 @@ class _RenderCavityMask extends RenderProxyBox {
     void visitChildren(RenderObject child) {
       if (child is _RenderCavity) {
         if (child._clip != null) {
-          path2.addPath(child.clipPath, child.localToGlobal(Offset.zero, ancestor: this));
+          path2.addPath(child.clipPath, child.localToGlobal(Offset.zero));
         }
-      } else {
+      } else if (child is! _RenderCavityMask) {
         child.visitChildren(visitChildren);
       }
     }
