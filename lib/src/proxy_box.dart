@@ -117,7 +117,7 @@ abstract class _RenderCavity<T> extends RenderProxyBox {
     _lastClip = clip;
     _lastOffset = offset;
     _clipPath = _createPath(offset, clip!);
-    if (needsPaint) {
+    if (needsPaint && !debugNeedsPaint) {
       _parent?._markNeedsLayout();
     }
   }
