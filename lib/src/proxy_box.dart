@@ -34,15 +34,28 @@ abstract class _RenderCavity<T> extends RenderProxyBox {
     }
   }
 
+  RenderObject? _parent;
+
   @override
   void attach(PipelineOwner owner) {
     super.attach(owner);
     _clipper?.addListener(_markNeedsClip);
+    var parent = this.parent;
+    while (parent != null) {
+      if (parent is _RenderCavityMask) {
+        _parent = parent;
+        parent = null;
+      } else {
+        parent = parent.parent;
+      }
+    }
   }
 
   @override
   void detach() {
     _clipper?.removeListener(_markNeedsClip);
+    _clipPath = null;
+    _parent = null;
     super.detach();
   }
 
@@ -87,8 +100,21 @@ abstract class _RenderCavity<T> extends RenderProxyBox {
     _clip ??= _clipper?.getClip(size) ?? _defaultClip;
   }
 
+  Offset? _lastOffset;
+  T? _lastClip;
+
   void _updateClipPath(Offset offset) {
-    _clipPath = _createPath(offset, _clip!);
+    final clip = _clip;
+    if (_lastOffset == offset && _lastClip == clip) {
+      return;
+    }
+    _clipPath = _createPath(offset, clip!);
+    _lastOffset = offset;
+    _lastClip = clip;
+    final parent = _parent;
+    if (parent != null && !parent.debugNeedsPaint) {
+      Timer.run(parent.markNeedsPaint);
+    }
   }
 
   @override

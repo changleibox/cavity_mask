@@ -1,5 +1,6 @@
 library mask;
 
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/rendering.dart';
@@ -53,19 +54,20 @@ class _RenderCavityMask extends RenderProxyBoxWithHitTestBehavior {
   }
 
   void _paintColor(PaintingContext context, Offset offset) {
+    final rect = offset & size;
     final canvas = context.canvas;
     canvas.save();
     final path1 = Path();
-    path1.addRect(offset & size);
+    path1.addRect(rect);
 
     final path2 = Path();
     path2.fillType = PathFillType.nonZero;
 
     void visitChildren(RenderObject child) {
       if (child is _RenderCavity) {
-        final clipPath = child.clipPath;
-        if (clipPath != null) {
-          path2.addPath(clipPath, Offset.zero);
+        final path = child.clipPath;
+        if (path != null && rect.overlaps(path.getBounds())) {
+          path2.addPath(path, Offset.zero);
         }
       } else if (child is! _RenderCavityMask) {
         child.visitChildren(visitChildren);
