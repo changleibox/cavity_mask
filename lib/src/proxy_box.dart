@@ -103,7 +103,7 @@ abstract class _RenderCavity<T> extends RenderProxyBox {
   Offset? _lastOffset;
   T? _lastClip;
 
-  void _updateClipPath(Offset offset) {
+  void _updateClipPath(Offset offset, [bool needsPaint = true]) {
     final clip = _clip;
     if (_lastOffset == offset && _lastClip == clip) {
       return;
@@ -112,7 +112,7 @@ abstract class _RenderCavity<T> extends RenderProxyBox {
     _lastOffset = offset;
     _lastClip = clip;
     final parent = _parent;
-    if (parent != null && !parent.debugNeedsPaint) {
+    if (needsPaint && parent != null && !parent.debugNeedsPaint) {
       Timer.run(parent.markNeedsPaint);
     }
   }
@@ -184,6 +184,7 @@ class RenderCavityRect extends _RenderCavity<Rect> {
   bool hitTest(BoxHitTestResult result, {required Offset position}) {
     if (_clipper != null) {
       _updateClip();
+      _updateClipPath(localToGlobal(Offset.zero), false);
       assert(_clip != null);
       if (!_clip!.contains(position)) {
         return false;
@@ -276,6 +277,7 @@ class RenderCavityRRect extends _RenderCavity<RRect> {
   bool hitTest(BoxHitTestResult result, {required Offset position}) {
     if (_clipper != null) {
       _updateClip();
+      _updateClipPath(localToGlobal(Offset.zero), false);
       assert(_clip != null);
       if (!_clip!.contains(position)) {
         return false;
@@ -357,6 +359,7 @@ class RenderCavityOval extends _RenderCavity<Rect> {
   @override
   bool hitTest(BoxHitTestResult result, {required Offset position}) {
     _updateClip();
+    _updateClipPath(localToGlobal(Offset.zero), false);
     assert(_clip != null);
     final center = _clip!.center;
     // convert the position to an offset from the center of the unit circle
@@ -443,6 +446,7 @@ class RenderCavityPath extends _RenderCavity<Path> {
   bool hitTest(BoxHitTestResult result, {required Offset position}) {
     if (_clipper != null) {
       _updateClip();
+      _updateClipPath(localToGlobal(Offset.zero), false);
       assert(_clip != null);
       if (!_clip!.contains(position)) {
         return false;

@@ -66,7 +66,7 @@ class _RenderCavityMask extends RenderProxyBoxWithHitTestBehavior {
     void visitChildren(RenderObject child) {
       if (child is _RenderCavity) {
         final path = child.clipPath;
-        if (path != null && rect.overlaps(path.getBounds())) {
+        if (!child.debugNeedsPaint && path != null && rect.overlaps(path.getBounds())) {
           path2.addPath(path, Offset.zero);
         }
       } else if (child is! _RenderCavityMask) {
