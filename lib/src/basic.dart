@@ -16,30 +16,37 @@ class CavityMask extends SingleChildRenderObjectWidget {
   const CavityMask({
     Key? key,
     required this.color,
+    this.barrier = false,
     Widget? child,
   }) : super(key: key, child: child);
 
   /// 颜色
   final Color color;
 
+  /// barrier
+  final bool barrier;
+
   @override
   _RenderCavityMask createRenderObject(BuildContext context) {
-    return _RenderCavityMask(color: color);
+    return _RenderCavityMask(color: color, barrier: barrier);
   }
 
   @override
   void updateRenderObject(BuildContext context, covariant _RenderCavityMask renderObject) {
-    renderObject.color = color;
+    renderObject
+      ..color = color
+      ..barrier = barrier;
   }
 }
 
-class _RenderCavityMask extends RenderProxyBoxWithHitTestBehavior {
+class _RenderCavityMask extends RenderProxyBox {
   _RenderCavityMask({
     required Color color,
+    required bool barrier,
   })  : _paint = Paint()
           ..color = color
           ..style = PaintingStyle.fill,
-        super(behavior: HitTestBehavior.opaque);
+        _barrier = barrier;
 
   final Paint _paint;
 
@@ -53,7 +60,34 @@ class _RenderCavityMask extends RenderProxyBoxWithHitTestBehavior {
     markNeedsPaint();
   }
 
+  bool get barrier => _barrier;
+
+  set barrier(bool value) {
+    if (value == _barrier) {
+      return;
+    }
+    _barrier = value;
+  }
+
+  bool _barrier;
+
   final _children = <_RenderCavity>[];
+
+  @override
+  bool hitTest(BoxHitTestResult result, {required ui.Offset position}) {
+    if (size.contains(position)) {
+      if (barrier && hitTestSelf(position) || hitTestChildren(result, position: position) && hitTestSelf(position)) {
+        result.add(BoxHitTestEntry(this, position));
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @override
+  bool hitTestSelf(ui.Offset position) {
+    return _children.every((element) => element.clipPath?.contains(position) != true) && color.alpha != 0x00;
+  }
 
   @override
   void performLayout() {
@@ -71,10 +105,16 @@ class _RenderCavityMask extends RenderProxyBoxWithHitTestBehavior {
       }
     }
 
+    if (color.alpha == 0x00) {
+      return;
+    }
     this.visitChildren(visitChildren);
   }
 
   void _paintColor(PaintingContext context, Offset offset) {
+    if (color.alpha == 0x00) {
+      return;
+    }
     final rect = offset & size;
     final canvas = context.canvas;
     canvas.save();
@@ -99,6 +139,9 @@ class _RenderCavityMask extends RenderProxyBoxWithHitTestBehavior {
   }
 
   void _markNeedsLayout() {
+    if (color.alpha == 0x00) {
+      return;
+    }
     if (!debugNeedsLayout) {
       Timer.run(markNeedsLayout);
     }
