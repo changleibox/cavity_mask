@@ -53,6 +53,27 @@ class _RenderCavityMask extends RenderProxyBoxWithHitTestBehavior {
     markNeedsPaint();
   }
 
+  final _children = <_RenderCavity>[];
+
+  @override
+  void performLayout() {
+    _visitChildren();
+    super.performLayout();
+  }
+
+  void _visitChildren() {
+    _children.clear();
+    void visitChildren(RenderObject child) {
+      if (child is _RenderCavity) {
+        _children.add(child);
+      } else if (child is! _RenderCavityMask) {
+        child.visitChildren(visitChildren);
+      }
+    }
+
+    this.visitChildren(visitChildren);
+  }
+
   void _paintColor(PaintingContext context, Offset offset) {
     final rect = offset & size;
     final canvas = context.canvas;
@@ -63,18 +84,12 @@ class _RenderCavityMask extends RenderProxyBoxWithHitTestBehavior {
     final path2 = Path();
     path2.fillType = PathFillType.nonZero;
 
-    void visitChildren(RenderObject child) {
-      if (child is _RenderCavity) {
-        final path = child.clipPath;
-        if (!child.debugNeedsPaint && path != null && rect.overlaps(path.getBounds())) {
-          path2.addPath(path, Offset.zero);
-        }
-      } else if (child is! _RenderCavityMask) {
-        child.visitChildren(visitChildren);
+    for (var child in _children) {
+      final path = child.clipPath;
+      if (!child.debugNeedsPaint && path != null && rect.overlaps(path.getBounds())) {
+        path2.addPath(path, Offset.zero);
       }
     }
-
-    this.visitChildren(visitChildren);
 
     canvas.drawPath(
       Path.combine(PathOperation.difference, path1, path2),
@@ -83,11 +98,10 @@ class _RenderCavityMask extends RenderProxyBoxWithHitTestBehavior {
     canvas.restore();
   }
 
-  void _markNeedsPaint() {
-    if (debugNeedsPaint) {
-      return;
+  void _markNeedsLayout() {
+    if (!debugNeedsLayout) {
+      Timer.run(markNeedsLayout);
     }
-    Timer.run(markNeedsPaint);
   }
 
   @override
