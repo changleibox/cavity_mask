@@ -27,8 +27,11 @@ class CavityMask extends SingleChildRenderObjectWidget {
     required this.color,
     this.barrier = false,
     this.position = MaskPosition.foreground,
+    this.isComplex = false,
+    this.willChange = false,
     Widget? child,
-  }) : super(key: key, child: child);
+  })  : assert(position == MaskPosition.foreground || !barrier),
+        super(key: key, child: child);
 
   /// 颜色
   final Color color;
@@ -39,12 +42,33 @@ class CavityMask extends SingleChildRenderObjectWidget {
   /// position
   final MaskPosition position;
 
+  /// Whether the painting is complex enough to benefit from caching.
+  ///
+  /// The compositor contains a raster cache that holds bitmaps of layers in
+  /// order to avoid the cost of repeatedly rendering those layers on each
+  /// frame. If this flag is not set, then the compositor will apply its own
+  /// heuristics to decide whether the this layer is complex enough to benefit
+  /// from caching.
+  ///
+  /// This flag can't be set to true if both [painter] and [foregroundPainter]
+  /// are null because this flag will be ignored in such case.
+  final bool isComplex;
+
+  /// Whether the raster cache should be told that this painting is likely
+  /// to change in the next frame.
+  ///
+  /// This flag can't be set to true if both [painter] and [foregroundPainter]
+  /// are null because this flag will be ignored in such case.
+  final bool willChange;
+
   @override
   _RenderCavityMask createRenderObject(BuildContext context) {
     return _RenderCavityMask(
       color: color,
       barrier: barrier,
       position: position,
+      isComplex: isComplex,
+      willChange: willChange,
     );
   }
 
@@ -53,7 +77,9 @@ class CavityMask extends SingleChildRenderObjectWidget {
     renderObject
       ..color = color
       ..barrier = barrier
-      ..position = position;
+      ..position = position
+      ..isComplex = isComplex
+      ..willChange = willChange;
   }
 }
 
@@ -61,12 +87,13 @@ class _RenderCavityMask extends RenderProxyBox {
   _RenderCavityMask({
     required Color color,
     required bool barrier,
-    required MaskPosition position,
+    required this.position,
+    required this.isComplex,
+    required this.willChange,
   })  : _paint = Paint()
           ..color = color
           ..style = PaintingStyle.fill,
-        _barrier = barrier,
-        _position = position;
+        _barrier = barrier;
 
   final Paint _paint;
 
@@ -91,17 +118,20 @@ class _RenderCavityMask extends RenderProxyBox {
 
   bool _barrier;
 
-  MaskPosition get position => _position;
+  MaskPosition position;
 
-  set position(MaskPosition value) {
-    if (value == _position) {
-      return;
-    }
-    _position = value;
-    markNeedsPaint();
-  }
+  /// Whether to hint that this layer's painting should be cached.
+  ///
+  /// The compositor contains a raster cache that holds bitmaps of layers in
+  /// order to avoid the cost of repeatedly rendering those layers on each
+  /// frame. If this flag is not set, then the compositor will apply its own
+  /// heuristics to decide whether the this layer is complex enough to benefit
+  /// from caching.
+  bool isComplex;
 
-  MaskPosition _position;
+  /// Whether the raster cache should be told that this painting is likely
+  /// to change in the next frame.
+  bool willChange;
 
   bool get _opaque => color.alpha != 0x00;
 
@@ -145,28 +175,36 @@ class _RenderCavityMask extends RenderProxyBox {
     }
   }
 
-  void _paintColor(PaintingContext context, Offset offset) {
+  void _paintColor(Canvas canvas, Offset offset) {
     final rect = offset & size;
-    final canvas = context.canvas;
     canvas.save();
-    final path1 = Path();
-    path1.addRect(rect);
+    final backgroundPath = Path();
+    backgroundPath.addRect(rect);
 
-    final path2 = Path();
-    path2.fillType = PathFillType.nonZero;
+    final clipPath = Path();
+    clipPath.fillType = PathFillType.nonZero;
 
     for (var child in _children) {
       final path = child.clipPath;
       if (path != null && rect.overlaps(path.getBounds())) {
-        path2.addPath(path, Offset.zero);
+        clipPath.addPath(path, Offset.zero);
       }
     }
 
     canvas.drawPath(
-      Path.combine(PathOperation.difference, path1, path2),
+      Path.combine(PathOperation.difference, backgroundPath, clipPath),
       _paint,
     );
     canvas.restore();
+  }
+
+  void _setRasterCacheHints(PaintingContext context) {
+    if (isComplex) {
+      context.setIsComplexHint();
+    }
+    if (willChange) {
+      context.setWillChangeHint();
+    }
   }
 
   void _markNeedsLayout() {
@@ -178,13 +216,15 @@ class _RenderCavityMask extends RenderProxyBox {
   @override
   void paint(PaintingContext context, Offset offset) {
     if (_opaque && size > Size.zero && position == MaskPosition.background) {
-      _paintColor(context, offset);
+      _paintColor(context.canvas, offset);
+      _setRasterCacheHints(context);
     }
     if (child != null) {
       context.paintChild(child!, offset);
     }
     if (_opaque && size > Size.zero && position == MaskPosition.foreground) {
-      _paintColor(context, offset);
+      _paintColor(context.canvas, offset);
+      _setRasterCacheHints(context);
     }
   }
 }
