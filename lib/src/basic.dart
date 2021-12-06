@@ -157,7 +157,7 @@ class _RenderCavityMask extends RenderProxyBox {
 
     for (var child in _children) {
       final path = child.clipPath;
-      if (!child.debugNeedsPaint && path != null && rect.overlaps(path.getBounds())) {
+      if (path != null && rect.overlaps(path.getBounds())) {
         path2.addPath(path, Offset.zero);
       }
     }
