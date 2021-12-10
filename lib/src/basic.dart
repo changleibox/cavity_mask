@@ -104,6 +104,7 @@ class _RenderCavityMask extends RenderProxyBox {
       return;
     }
     _paint.color = value;
+    markNeedsCompositingBitsUpdate();
     markNeedsPaint();
   }
 
@@ -136,6 +137,9 @@ class _RenderCavityMask extends RenderProxyBox {
   bool get _opaque => color.alpha != 0x00;
 
   final _children = <_RenderCavity>[];
+
+  @override
+  bool get alwaysNeedsCompositing => child != null && _opaque;
 
   @override
   bool hitTest(BoxHitTestResult result, {required ui.Offset position}) {
